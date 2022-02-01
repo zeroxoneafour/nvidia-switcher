@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# run as root in a terminal
+
+# run with polkit if not root
+if ! [[ $(id -u) == 0 ]]; then
+	pkexec nvidia-switcher
+	exit
+fi
+
+confirm=""
+
+# ask about restarting LightDM
+confirmReboot () {
+	reboot_confirm=""
+	read -n1 -p "Reboot now? [Y/n]: " reboot_confirm
+	echo ""
+	if [[ $reboot_confirm == [Y/y] ]]; then
+		reboot
+	else
+		echo "A reboot is needed for changes to take effect."
+	fi
+}
+
+# check if the nvidia symlink exists in the xorg.conf.d
+if [[ -f "/etc/X11/xorg.conf.d/nvidia.conf" ]]; then
+	read -n1 -p "Disable Xorg loading of Nvidia GPU? [Y/n]: " confirm
+	echo ""
+	if [[ $confirm == [Y/y] ]]; then
+		rm /etc/X11/xorg.conf.d/nvidia.conf
+		rm /etc/lightdm/load-nvidia.sh
+		rm /etc/modprobe.d/disable-nouveau.conf
+		confirmReboot
+	else
+		echo "No files changed."
+	fi
+else
+	read -n1 -p "Enable Xorg loading of Nvidia GPU? [Y/n]: " confirm
+	echo ""
+	if [[ $confirm == [Y/y] ]]; then
+		ln -s /usr/share/nvidia-switcher/nvidia-primary.conf /etc/X11/xorg.conf.d/nvidia.conf
+		ln -s /usr/share/nvidia-switcher/load-nvidia.sh /etc/lightdm/load-nvidia.sh
+		ln -s /usr/share/nvidia-switcher/disable-nouveau.conf /etc/modprobe.d/disable-nouveau.conf
+		confirmReboot
+	else
+		echo "No files changed."
+	fi
+fi
